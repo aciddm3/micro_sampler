@@ -1,0 +1,27 @@
+[package]
+name = "micro_sampler"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+members = [
+	"xtask",
+]
+
+
+[lib]
+crate-type = ["cdylib", "lib"]
+
+[dependencies]
+itertools = "0.15.0"
+nih_plug = { git = "https://github.com/robbert-vdh/nih-plug", features = ["vst3"] }
+nih_plug_derive = { git = "https://github.com/robbert-vdh/nih-plug" } 
+# фреймворк
+nih_plug_egui = { git = "https://github.com/robbert-vdh/nih-plug.git" }
+# графика, заточенная под фреймворк
+parking_lot = "0.12.5"
+# для RwLock
+rfd = "0.17.2"
+# диалог для выбора фалов
+symphonia = { version = "0.5", features = ["mp3", "flac", "ogg", "vorbis", "wav", "pcm"] }
+# для чтения аудиофалов
