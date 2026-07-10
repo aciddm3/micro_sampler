@@ -131,7 +131,7 @@ impl Default for SamplerParams {
                 "Sustain",
                 1.0,
                 FloatRange::Linear {
-                    min: -100.0,
+                    min: -90.0,
                     max: 0.0,
                 },
             )

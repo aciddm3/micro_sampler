@@ -58,6 +58,7 @@ pub struct SamplePlayer {
     //
     fade_out_angle: f32,
     fade_out_position: f32,
+    fade_out_gain: f32,
 }
 
 impl SamplePlayer {
@@ -70,6 +71,7 @@ impl SamplePlayer {
             status: SamplePlayerStatus::PlayingNormal,
             fade_out_angle: 0.0,
             fade_out_position: 0.0,
+            fade_out_gain: 0.0,
         }
     }
 
@@ -77,7 +79,8 @@ impl SamplePlayer {
         self.status
     }
 
-    pub fn reset(&mut self, time_marks: SampleTimeMarks) {
+    pub fn reset(&mut self, time_marks: SampleTimeMarks, adsr_value: f32, velocity_gain : f32) {
+        self.fade_out_gain = adsr_value * velocity_gain;
         self.fade_out_angle = FRAC_PI_2;
         self.fade_out_position = self.position;
         self.position = time_marks.play_start;
@@ -86,7 +89,7 @@ impl SamplePlayer {
         self.status = SamplePlayerStatus::PlayingNormal;
     }
 
-    pub fn process(&mut self, step: f32, time_marks: SampleTimeMarks) -> (f32, SamplePlayerStatus) {
+    pub fn process(&mut self, step: f32, time_marks: SampleTimeMarks, adsr_value: f32, velocity_gain : f32) -> (f32, SamplePlayerStatus) {
         let decoded_audio_guard = self.decoded_audio.read();
         let step_normalized = step / decoded_audio_guard.get_length_in_seconds();
         if self.status == SamplePlayerStatus::PlayingNormal {
@@ -120,10 +123,11 @@ impl SamplePlayer {
         // вычисление и возвращение значения
 
         let (prev, curr) = self.fade_out_angle.sin_cos();
-        
-        self.value = curr * table_value(self.position, &decoded_audio_guard) + prev * table_value(self.fade_out_position, &decoded_audio_guard);
+
+        self.value = curr * table_value(self.position, &decoded_audio_guard) * adsr_value * velocity_gain
+            + prev * table_value(self.fade_out_position, &decoded_audio_guard) * self.fade_out_gain;
         if self.fade_out_angle > 0.0 {
-            self.fade_out_angle -= 0.0030674; // = (pi/2)/256
+            self.fade_out_angle -= 0.024543692; // = (pi/2)/64
         }
         (self.value, self.status)
     }
@@ -190,7 +194,7 @@ mod test {
         let mut sp = SamplePlayer::new(&Arc::new(RwLock::new(table)), time_marks);
 
         for _ in 0..200 {
-            let res = sp.process(0.01, time_marks);
+            let res = sp.process(0.01, time_marks, 1.0, 1.0);
             println!("({:?}\t:{})", res.1, res.0,);
         }
 

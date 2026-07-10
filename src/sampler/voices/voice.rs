@@ -57,7 +57,7 @@ impl Voice {
 
     pub fn process(&mut self, adsr_step: f32, sp_step: f32, time_marks: SampleTimeMarks) -> f32 {
         self.adsr.step(adsr_step);
-        self.value = self.adsr.get_value() * self.sp.process(sp_step, time_marks).0 * self.gain_by_velocity;
+        self.value =  self.sp.process(sp_step, time_marks, self.adsr.get_value(), self.gain_by_velocity).0 * self.gain_by_velocity;
         match self.adsr.get_phase() {
             AdsrPhase::Attack | AdsrPhase::Decay | AdsrPhase::Sustain => {
                 self.status = VoiceStatus::Playing
@@ -88,8 +88,8 @@ impl Voice {
 
     #[inline]
     pub fn reset(&mut self, time_marks: SampleTimeMarks) {
+        self.sp.reset(time_marks, self.adsr.get_value(), self.gain_by_velocity);
         self.adsr.reset();
-        self.sp.reset(time_marks);
         self.status = VoiceStatus::Inactive;
     }
 
