@@ -157,7 +157,6 @@ impl VoiceManager {
 
 #[cfg(test)]
 mod test {
-
     use super::*;
 
     #[test]

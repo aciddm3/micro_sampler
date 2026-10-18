@@ -7,12 +7,12 @@ use crate::sampler::decoded_audio::DecodedAudio;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SampleTimeMarks {
     play_start: f32,
-    play_direction_sight: f32,
+    is_reverse_play_direction: bool,
     play_end: f32,
 
     loop_enabled: bool,
     loop_start: f32,
-    loop_direction_sight: f32,
+    is_reverse_loop_direction: bool,
     loop_end: f32,
 }
 
@@ -32,12 +32,16 @@ impl SampleTimeMarks {
         Self {
             play_start,
             play_end,
-            play_direction_sight: (play_end - play_start).signum(),
+            is_reverse_play_direction: (play_end < play_start),
             loop_enabled,
             loop_start,
-            loop_direction_sight: (loop_end - loop_start).signum(),
+            is_reverse_loop_direction: (loop_end < loop_start),
             loop_end,
         }
+    }
+    #[inline]
+    pub fn get_loop_length(&self) -> f32 {
+        (self.loop_end - self.loop_start).abs()
     }
 }
 
@@ -79,7 +83,7 @@ impl SamplePlayer {
         self.status
     }
 
-    pub fn reset(&mut self, time_marks: SampleTimeMarks, adsr_value: f32, velocity_gain : f32) {
+    pub fn reset(&mut self, time_marks: SampleTimeMarks, adsr_value: f32, velocity_gain: f32) {
         self.fade_out_gain = adsr_value * velocity_gain;
         self.fade_out_angle = FRAC_PI_2;
         self.fade_out_position = self.position;
@@ -89,42 +93,80 @@ impl SamplePlayer {
         self.status = SamplePlayerStatus::PlayingNormal;
     }
 
-    pub fn process(&mut self, step: f32, time_marks: SampleTimeMarks, adsr_value: f32, velocity_gain : f32) -> (f32, SamplePlayerStatus) {
+    pub fn process(
+        &mut self,
+        step_in_seconds: f32,
+        time_marks: SampleTimeMarks,
+        adsr_value: f32,
+        velocity_gain: f32,
+    ) -> (f32, SamplePlayerStatus) {
         let decoded_audio_guard = self.decoded_audio.read();
-        let step_normalized = step / decoded_audio_guard.get_length_in_seconds();
-        if self.status == SamplePlayerStatus::PlayingNormal {
-            // если проигрывается вне цикла
-            self.position += time_marks.play_direction_sight * step_normalized;
-            self.fade_out_position += time_marks.play_direction_sight * step_normalized;
-            self.position = self.position.clamp(0.0, 1.0);
-            if self.position * time_marks.play_direction_sight // тут используется свойство x > y <=> -x < -y
-                >= time_marks.play_direction_sight * time_marks.loop_start
-                && time_marks.loop_enabled
-            {
-                self.status = SamplePlayerStatus::PlayingLoop;
-            }
+        let step = step_in_seconds / decoded_audio_guard.get_length_in_seconds();
 
-            if self.position * time_marks.play_direction_sight
-                >= time_marks.play_direction_sight * time_marks.play_end
-            {
-                self.status = SamplePlayerStatus::PlayEnd;
+        match self.status {
+            SamplePlayerStatus::PlayingNormal => {
+                let mut status_changed = false;
+                if time_marks.loop_enabled {
+                    let movement_to_loop_start = match time_marks.is_reverse_play_direction {
+                        true => self.position - time_marks.loop_start,
+                        false => time_marks.loop_start - self.position,
+                    };
+                    if movement_to_loop_start <= step {
+                        self.position = time_marks.loop_start
+                            + if time_marks.is_reverse_loop_direction {
+                                -(step - movement_to_loop_start.abs())
+                                    .rem_euclid(time_marks.get_loop_length())
+                            } else {
+                                (step - movement_to_loop_start.abs())
+                                    .rem_euclid(time_marks.get_loop_length())
+                            };
+                        self.status = SamplePlayerStatus::PlayingLoop;
+                        status_changed = true;
+                    }
+                }
+                if !status_changed {
+                    let movement_to_end = match time_marks.is_reverse_play_direction {
+                        true => self.position - time_marks.play_end,
+                        false => time_marks.play_end - self.position,
+                    };
+                    if movement_to_end <= step {
+                        self.position = time_marks.play_end;
+                        self.status = SamplePlayerStatus::PlayEnd;
+                        status_changed = true;
+                    }
+                }
+                if !status_changed {
+                    self.position += match time_marks.is_reverse_play_direction {
+                        true => -step,
+                        false => step,
+                    };
+                }
             }
-        } else if self.status == SamplePlayerStatus::PlayingLoop {
-            // если проигрывается цикл
-            self.position += time_marks.loop_direction_sight * step_normalized;
-            self.position = self.position.clamp(0.0, 1.0);
+            SamplePlayerStatus::PlayingLoop => {
+                let position_at_loop = match time_marks.is_reverse_loop_direction {
+                    true => time_marks.loop_start - self.position,
+                    false => self.position - time_marks.loop_start,
+                };
 
-            if self.position * time_marks.loop_direction_sight
-                >= time_marks.loop_direction_sight * time_marks.loop_end
-            {
                 self.position = time_marks.loop_start
+                    + match time_marks.is_reverse_loop_direction {
+                        true => -(position_at_loop + step).rem_euclid(time_marks.get_loop_length()),
+                        false => (position_at_loop + step).rem_euclid(time_marks.get_loop_length()),
+                    };
             }
+            SamplePlayerStatus::PlayEnd => {}
         }
+
+        self.position = self.position.clamp(0.0, 1.0);
+
         // вычисление и возвращение значения
 
         let (prev, curr) = self.fade_out_angle.sin_cos();
 
-        self.value = curr * table_value(self.position, &decoded_audio_guard) * adsr_value * velocity_gain
+        self.value = curr
+            * table_value(self.position, &decoded_audio_guard)
+            * adsr_value
+            * velocity_gain
             + prev * table_value(self.fade_out_position, &decoded_audio_guard) * self.fade_out_gain;
         if self.fade_out_angle > 0.0 {
             self.fade_out_angle -= 0.024543692; // = (pi/2)/64

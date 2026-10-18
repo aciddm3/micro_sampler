@@ -1,6 +1,5 @@
 // sampler/adsr.rs
 
-use nih_plug::util::db_to_gain;
 use parking_lot::RwLock;
 use std::sync::Arc;
 
@@ -29,12 +28,16 @@ impl AdsrParams {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum AdsrPhase {
-    Attack,
-    Decay,
+    /// Attack and remain time is f32
+    Attack(f32),
+    /// Decay and remain time is f32
+    Decay(f32),
+    /// Sustain
     Sustain,
-    Release,
+    /// Release contains remain time and release start value
+    Release(f32, f32),
     Idle,
 }
 
@@ -61,60 +64,81 @@ impl Adsr {
         self.phase = AdsrPhase::Idle;
     }
 
+    #[inline]
+    fn morph_exp(x: f32) -> f32 {
+        (20f32.powf(x) - 1.0) / 19.0
+    }
+
     pub fn step(&mut self, step: f32) {
         let guard = self.params.read();
         if self.is_gated {
             match self.phase {
                 AdsrPhase::Idle => {
-                    self.phase = AdsrPhase::Attack;
-                }
-                AdsrPhase::Attack => {
-                    if guard.attack < f32::EPSILON {
+                    self.current_val = 0.0;
+                    self.phase = if guard.attack > step {
+                        AdsrPhase::Attack(guard.attack - step)
+                    } else if guard.decay > step {
                         self.current_val = 1.0;
+                        AdsrPhase::Decay(guard.decay - step)
                     } else {
-                        self.current_val += step / guard.attack;
-                    }
-
-                    if self.current_val >= 1.0 {
-                        self.phase = AdsrPhase::Decay;
-                    }
+                        self.current_val = guard.sustain;
+                        AdsrPhase::Sustain
+                    };
                 }
-                AdsrPhase::Decay => {
-                    let der = guard.decay * (1.0 - guard.sustain);
-                    if der < f32::EPSILON {
-                        self.current_val = guard.sustain;
+                AdsrPhase::Attack(rem) => {
+                    if rem <= step {
+                        self.phase = if guard.decay > step {
+                            AdsrPhase::Decay(guard.decay + rem - step)
+                        } else {
+                            self.current_val = guard.sustain;
+                            AdsrPhase::Sustain
+                        }
                     } else {
-                        self.current_val -= step / der;
+                        self.phase = AdsrPhase::Attack(rem - step);
                     }
-
-                    if self.current_val <= guard.sustain {
-                        self.phase = AdsrPhase::Sustain;
-                        self.current_val = guard.sustain;
+                    self.current_val = Self::morph_exp(1.0 - rem / guard.attack.max(0.0001));
+                }
+                AdsrPhase::Decay(rem) => {
+                    if rem <= step {
+                        self.phase = AdsrPhase::Sustain
+                    } else {
+                        self.phase = AdsrPhase::Decay(rem - step);
                     }
+                    self.current_val = guard.sustain + (1.0 - guard.sustain) * Self::morph_exp(rem / guard.decay.max(0.0001));
                 }
                 AdsrPhase::Sustain => self.current_val = guard.sustain,
                 _ => self.phase = AdsrPhase::Idle,
             }
         } else {
             // self.is_gated() == false
-            if self.current_val > 0.0 {
-                self.phase = AdsrPhase::Release;
-                let der = guard.release * guard.sustain;
-                if der < f32::EPSILON {
-                    self.current_val = 0.0;
-                } else {
-                    self.current_val -= step / guard.release;
+            match self.phase {
+                AdsrPhase::Attack(_) | AdsrPhase::Decay(_) | AdsrPhase::Sustain => {
+                    if guard.release <= step {
+                        self.current_val = 0.0;
+                        self.phase = AdsrPhase::Idle;
+                    } else {
+                        self.phase = AdsrPhase::Release(guard.release - step, self.current_val)
+                    }
                 }
-            } else {
-                self.phase = AdsrPhase::Idle;
-                self.current_val = 0.0;
+                AdsrPhase::Release(rem, val) => {
+                    if rem <= step {
+                        self.phase = AdsrPhase::Idle
+                    } else {
+                        self.phase = AdsrPhase::Release(rem - step, val);
+                    }
+                    self.current_val = val * Self::morph_exp(rem / guard.release.max(0.0001));
+                }
+                _ => {
+                    self.phase = AdsrPhase::Idle;
+                    self.current_val = 0.0;
+                }
             }
         };
         self.current_val = self.current_val.clamp(0.0, 1.0);
     }
 
     pub fn get_value(&self) -> f32 {
-        db_to_gain(100.0 * (self.current_val - 1.0))
+        self.current_val
     }
 
     pub fn get_phase(&self) -> AdsrPhase {

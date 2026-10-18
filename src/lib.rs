@@ -1,5 +1,5 @@
 // lib.rs
-use nih_plug::{prelude::*, util::db_to_gain};
+use nih_plug::prelude::*;
 
 use crate::{
     background_task::{BackgroundTask::LoadSampleWithoutDialog, SamplerTaskExecutor},
@@ -13,24 +13,24 @@ mod sampler;
 
 impl Plugin for sampler::Sampler {
     const NAME: &'static str = "MicroSampler";
-
+    // plugin name
     const VENDOR: &'static str = "Gema";
-
+    // a alias
     const URL: &'static str = "https://gema/sampler";
 
-    const EMAIL: &'static str = "None";
+    const EMAIL: &'static str = "";
 
     const VERSION: &'static str = env!("CARGO_PKG_VERSION_MAJOR");
 
     const AUDIO_IO_LAYOUTS: &'static [AudioIOLayout] = &[AudioIOLayout {
-        main_output_channels: NonZeroU32::new(2),
-        main_input_channels: NonZeroU32::new(0),
+        main_output_channels: NonZeroU32::new(2), // 2 outs (stereo)
+        main_input_channels: NonZeroU32::new(0),  // 0 inputs
         aux_input_ports: &[],
         aux_output_ports: &[],
         names: PortNames::const_default(),
     }];
 
-    const MIDI_INPUT: MidiConfig = MidiConfig::Basic;
+    const MIDI_INPUT: MidiConfig = MidiConfig::Basic; // For Full MIDI events
 
     type SysExMessage = ();
 
@@ -94,7 +94,7 @@ impl Plugin for sampler::Sampler {
         self.vm.adsr_params.write().set(
             self.params.attack.value(),
             self.params.decay.value(),
-            db_to_gain(self.params.sustain.value()),
+            self.params.sustain.value(),
             self.params.release.value(),
         );
         //

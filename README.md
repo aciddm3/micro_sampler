@@ -4,11 +4,11 @@ Microsampler is a simple polyphonic sampler capable of playing back audio files 
 
 ## Specifications
 
-Microsampler always plays a single channel from the loaded file. The channel is selected by its index using the "+" and "-" keys in the user interface.
+Microsampler always plays a single channel from the loaded file. The channel is selected by its index using the "+" and "-" buttons in the GUI.
 
 It features adjustable playback range and looping settings.
 
-Polyphony can be configured within the range of 1 to MAX_POLYPHONY. The MAX_POLYPHONY constant can be set to alternative values before compilation.
+Polyphony can be configured within the range of 1 to `MAX_POLYPHONY`. **The `MAX_POLYPHONY` constant can be set to alternative values before compilation.**
 
 It includes controls for output volume, panning, and transposition.
 
@@ -29,8 +29,15 @@ parking_lot = "0.12.5"
 rfd = "0.17.2"
 symphonia = { version = "0.5", features = ["mp3", "flac", "ogg", "vorbis", "wav", "pcm"] }
 ```
+
 The project also includes an integrated xtask for quick compilation of the vst3-bundle:
 
 ```sh
 cargo run --package xtask bundle micro_sampler --release
 ```
+
+## AI usage
+
+File `background_task/load_file.rs` is created with LLM.
+
+**Other files don't include AI-generated code.**

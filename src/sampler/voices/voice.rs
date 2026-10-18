@@ -59,10 +59,10 @@ impl Voice {
         self.adsr.step(adsr_step);
         self.value =  self.sp.process(sp_step, time_marks, self.adsr.get_value(), self.gain_by_velocity).0 * self.gain_by_velocity;
         match self.adsr.get_phase() {
-            AdsrPhase::Attack | AdsrPhase::Decay | AdsrPhase::Sustain => {
+            AdsrPhase::Attack(_) | AdsrPhase::Decay(_) | AdsrPhase::Sustain => {
                 self.status = VoiceStatus::Playing
             }
-            AdsrPhase::Release => self.status = VoiceStatus::Releasing,
+            AdsrPhase::Release(_, _) => self.status = VoiceStatus::Releasing,
             AdsrPhase::Idle => {
                 self.status = VoiceStatus::Inactive;
                 self.adsr.gate_off();

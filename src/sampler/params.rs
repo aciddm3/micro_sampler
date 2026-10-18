@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 // sampler/params.rs
 use nih_plug::prelude::*;
 use parking_lot::RwLock;
@@ -87,8 +89,14 @@ impl Default for SamplerParams {
             ),
 
             retrigger: BoolParam::new("Retrigger", true),
-            transpose_oct: IntParam::new("Octave", 0, IntRange::Linear { min: -5, max: 5 }),
-            transpose_semitones: IntParam::new("Semiton", 0, IntRange::Linear { min: -6, max: 6 }),
+            transpose_oct: IntParam::new("Octave", 0, IntRange::Linear { min: -5, max: 5 })
+                .with_unit("oct"),
+            transpose_semitones: IntParam::new(
+                "Semitones",
+                0,
+                IntRange::Linear { min: -6, max: 6 },
+            )
+            .with_unit("st"),
             fine_tune: FloatParam::new(
                 "Fine Tune",
                 0.0,
@@ -96,7 +104,8 @@ impl Default for SamplerParams {
                     min: -1.0,
                     max: 1.0,
                 },
-            ).with_unit("cents"),
+            )
+            .with_unit("st"),
 
             play_start: FloatParam::new("Start", 0.0, FloatRange::Linear { min: 0.0, max: 1.0 }),
             play_end: FloatParam::new("End", 1.0, FloatRange::Linear { min: 0.0, max: 1.0 }),
@@ -111,13 +120,15 @@ impl Default for SamplerParams {
 
             attack: FloatParam::new(
                 "Attack",
-                0.25,
+                0.1,
                 FloatRange::Skewed {
                     min: 0.0,
                     max: 8.0,
                     factor: FloatRange::skew_factor(-1.0),
                 },
-            ).with_unit("s").with_value_to_string(formatters::v2s_f32_rounded(3)),
+            )
+            .with_unit("s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
             decay: FloatParam::new(
                 "Decay",
                 0.25,
@@ -126,17 +137,12 @@ impl Default for SamplerParams {
                     max: 8.0,
                     factor: FloatRange::skew_factor(-1.0),
                 },
-            ).with_unit("s").with_value_to_string(formatters::v2s_f32_rounded(3)),
-            sustain: FloatParam::new(
-                "Sustain",
-                1.0,
-                FloatRange::Linear {
-                    min: -90.0,
-                    max: 0.0,
-                },
             )
-            .with_unit("dB")
+            .with_unit("s")
             .with_value_to_string(formatters::v2s_f32_rounded(3)),
+            sustain: FloatParam::new("Sustain", 1.0, FloatRange::Linear { min: 0.0, max: 1.0 })
+                .with_value_to_string(Arc::new(|s| formatters::v2s_f32_rounded(2)(s * 100.0)))
+                .with_unit("%"),
             release: FloatParam::new(
                 "Release",
                 0.25,
@@ -146,7 +152,8 @@ impl Default for SamplerParams {
                     factor: FloatRange::skew_factor(-1.0),
                 },
             )
-            .with_unit("s").with_value_to_string(formatters::v2s_f32_rounded(3)),
+            .with_unit("s")
+            .with_value_to_string(formatters::v2s_f32_rounded(3)),
             panorama: FloatParam::new("Panorama", 0.5, FloatRange::Linear { min: 0.0, max: 1.0 })
                 .with_value_to_string(formatters::v2s_f32_rounded(3)),
             master_gain: FloatParam::new(

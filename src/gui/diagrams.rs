@@ -36,7 +36,6 @@ pub fn draw_sample_graph(
                 + rect.top(),
         })
         .tuple_windows::<(Pos2, Pos2)>()
-        .into_iter()
     {
         painter.circle(p_n1, 1.0, Color32::LIGHT_YELLOW, Stroke::NONE);
         painter.line_segment([p_n, p_n1], Stroke::new(0.25, Color32::YELLOW));
