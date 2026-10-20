@@ -76,35 +76,37 @@ impl Adsr {
                 AdsrPhase::Idle => {
                     self.current_val = 0.0;
                     self.phase = if guard.attack > step {
-                        AdsrPhase::Attack(guard.attack - step)
+                        AdsrPhase::Attack(1.0 - step / guard.attack.max(0.001))
                     } else if guard.decay > step {
                         self.current_val = 1.0;
-                        AdsrPhase::Decay(guard.decay - step)
+                        AdsrPhase::Decay(1.0 - step / guard.decay.max(0.001))
                     } else {
                         self.current_val = guard.sustain;
                         AdsrPhase::Sustain
                     };
                 }
                 AdsrPhase::Attack(rem) => {
-                    if rem <= step {
+                    if rem * guard.attack <= step {
                         self.phase = if guard.decay > step {
-                            AdsrPhase::Decay(guard.decay + rem - step)
+                            AdsrPhase::Decay(
+                                1.0 + (rem * guard.attack - step) / guard.decay.max(0.001),
+                            )
                         } else {
                             self.current_val = guard.sustain;
                             AdsrPhase::Sustain
                         }
                     } else {
-                        self.phase = AdsrPhase::Attack(rem - step);
+                        self.phase = AdsrPhase::Attack(rem - step / guard.attack.max(0.001));
                     }
-                    self.current_val = Self::morph_exp(1.0 - rem / guard.attack.max(0.0001));
+                    self.current_val = Self::morph_exp(1.0 - rem);
                 }
                 AdsrPhase::Decay(rem) => {
-                    if rem <= step {
+                    if rem * guard.decay <= step {
                         self.phase = AdsrPhase::Sustain
                     } else {
-                        self.phase = AdsrPhase::Decay(rem - step);
+                        self.phase = AdsrPhase::Decay(rem - step / guard.decay.max(0.001));
                     }
-                    self.current_val = guard.sustain + (1.0 - guard.sustain) * Self::morph_exp(rem / guard.decay.max(0.0001));
+                    self.current_val = guard.sustain + (1.0 - guard.sustain) * Self::morph_exp(rem);
                 }
                 AdsrPhase::Sustain => self.current_val = guard.sustain,
                 _ => self.phase = AdsrPhase::Idle,
@@ -117,16 +119,16 @@ impl Adsr {
                         self.current_val = 0.0;
                         self.phase = AdsrPhase::Idle;
                     } else {
-                        self.phase = AdsrPhase::Release(guard.release - step, self.current_val)
+                        self.phase = AdsrPhase::Release(1.0 - step / guard.release.max(0.001), self.current_val)
                     }
                 }
                 AdsrPhase::Release(rem, val) => {
                     if rem <= step {
                         self.phase = AdsrPhase::Idle
                     } else {
-                        self.phase = AdsrPhase::Release(rem - step, val);
+                        self.phase = AdsrPhase::Release(rem - step / guard.release.max(0.0001), val);
                     }
-                    self.current_val = val * Self::morph_exp(rem / guard.release.max(0.0001));
+                    self.current_val = val * Self::morph_exp(rem);
                 }
                 _ => {
                     self.phase = AdsrPhase::Idle;
