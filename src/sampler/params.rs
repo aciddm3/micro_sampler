@@ -94,7 +94,7 @@ impl Default for SamplerParams {
             transpose_semitones: IntParam::new(
                 "Semitones",
                 0,
-                IntRange::Linear { min: -6, max: 6 },
+                IntRange::Linear { min: -12, max: 12 },
             )
             .with_unit("st"),
             fine_tune: FloatParam::new(

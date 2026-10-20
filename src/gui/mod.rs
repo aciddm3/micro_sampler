@@ -30,14 +30,14 @@ impl SamplerGUI for Sampler {
         let params = self.params.clone();
         let decoded_audio = self.decoded_audio.clone();
         create_egui_editor(
-            EguiState::from_size(600, 420),
+            EguiState::from_size(600, 470),
             (),
             |_ctx, _data| {},
             move |egui_ctx, setter, _data| {
                 egui::CentralPanel::default().show(egui_ctx, |ui| {
                     ui.vertical_centered(|ui| {
                         ui.group(|ui| {
-                            diagrams::draw_sample_graph(ui, &decoded_audio, &params);
+                            diagrams::sample_graph::draw_sample_graph(ui, &decoded_audio, &params);
                             ui.horizontal_top(|ui| {
                                 let channel_last_index;
                                 let current_channel;
@@ -208,8 +208,8 @@ impl SamplerGUI for Sampler {
                         });
                     });
                     //
-                    ui.horizontal_centered(|ui| {
-                        ui.group(|ui| {
+                    ui.group(|ui| {
+                        ui.horizontal(|ui| {
                             ui.vertical(|ui| {
                                 ui.horizontal(|ui| {
                                     ui.label("Attack");
@@ -225,8 +225,6 @@ impl SamplerGUI for Sampler {
                                         setter,
                                     ))
                                 });
-                            });
-                            ui.vertical(|ui| {
                                 ui.horizontal(|ui| {
                                     ui.label("Sustain");
                                     ui.add(nih_plug_egui::widgets::ParamSlider::for_param(
@@ -242,6 +240,15 @@ impl SamplerGUI for Sampler {
                                     ))
                                 });
                             });
+                            diagrams::adsr_graph::draw_adsr_graph(
+                                ui,
+                                crate::sampler::adsr::AdsrParams {
+                                    attack: params.attack.value(),
+                                    decay: params.decay.value(),
+                                    sustain: params.sustain.value(),
+                                    release: params.release.value(),
+                                },
+                            );
                         });
                     });
                 });
