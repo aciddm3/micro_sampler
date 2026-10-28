@@ -4,7 +4,7 @@ use nih_plug::prelude::*;
 use crate::{
     background_task::{BackgroundTask::LoadSampleWithoutDialog, SamplerTaskExecutor},
     gui::SamplerGUI,
-    sampler::{sample_player::SampleTimeMarks, voices::note::Note},
+    sampler::{sample_player::sample_time_marks::SampleTimeMarks, voices::note::Note},
 };
 
 mod background_task;

@@ -1,7 +1,7 @@
 // sampler/voices/voice.rs
 //
 use crate::sampler::decoded_audio::DecodedAudio;
-use crate::sampler::sample_player::SampleTimeMarks;
+use crate::sampler::sample_player::sample_time_marks::SampleTimeMarks;
 use crate::sampler::voices::note::TransposeInfo;
 use crate::sampler::{
     adsr::{Adsr, AdsrParams, AdsrPhase},

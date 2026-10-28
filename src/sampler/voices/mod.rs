@@ -2,7 +2,7 @@ use crate::sampler::decoded_audio::DecodedAudio;
 // sampler/voices/mod.rs
 use crate::sampler::voices::note::TransposeInfo;
 
-use super::sample_player::SampleTimeMarks;
+use super::sample_player::sample_time_marks::SampleTimeMarks;
 use super::voices::note::Note;
 use super::{
     adsr::AdsrParams,

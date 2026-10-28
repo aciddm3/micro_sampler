@@ -6,7 +6,7 @@ use parking_lot::RwLock;
 use crate::sampler::adsr::AdsrParams;
 use crate::sampler::decoded_audio::DecodedAudio;
 use crate::sampler::params::{MAX_POLYPHONY, SamplerParams};
-use crate::sampler::sample_player::SampleTimeMarks;
+use crate::sampler::sample_player::sample_time_marks::SampleTimeMarks;
 use crate::sampler::voices::VoiceManager;
 use crate::sampler::voices::note::TransposeInfo;
 

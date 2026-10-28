@@ -5,7 +5,7 @@ use nih_plug_egui::egui::{self, Color32, Pos2, Stroke, Ui, Vec2};
 use parking_lot::RwLock;
 
 use crate::sampler::{
-    decoded_audio::DecodedAudio, params::SamplerParams, sample_player::table_value,
+    decoded_audio::DecodedAudio, params::SamplerParams, sample_player::table_value_linear,
 };
 
 const GRAPH_HEIGHT: f32 = 100.0;
@@ -31,7 +31,7 @@ pub fn draw_sample_graph(
     for (p_n, p_n1) in (0..(width as usize))
         .map(|x| Pos2 {
             x: x as f32 + rect.left(),
-            y: -table_value(x as f32 / width, &decoded_audio_guard.read()) * HALF_GRAPH_HEIGHT
+            y: -table_value_linear(x as f32 / width, &decoded_audio_guard.read()) * HALF_GRAPH_HEIGHT
                 + HALF_GRAPH_HEIGHT
                 + rect.top(),
         })
